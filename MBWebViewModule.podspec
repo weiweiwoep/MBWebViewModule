@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name             = 'MBWebViewModule'
-  s.version          = '1.0.6'
+  s.version          = '1.0.7'
   s.summary          = '封装好的webView'
 
   #添加第三方依赖
@@ -37,9 +37,12 @@ Pod::Spec.new do |s|
 
   #处理并上传照片到七牛
   s.dependency 'UploadImageTool'
+  
+  #TD数据分析统计
+  s.dependency 'TDAppAnalytics'
 
   <<-DESC
-  APP中封装好的webView容器，方便 js 交互。
+  APP中封装好的webView容器，方便 js 交互。1.添加H5案例跳转到原生案例支持插件，2.添加TD数据分析统计埋点
   DESC
 
   s.homepage         = 'https://github.com/titer18/MBWebViewModule'

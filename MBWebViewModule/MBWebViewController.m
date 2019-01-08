@@ -35,6 +35,8 @@
 #import "NavigatorModule.h"
 //选择项目
 #import <SelectProject/SelectProjectViewController.h>
+//TD数据分析统计
+#import <TDAppAnalytics/TalkingData.h>
 
 @interface MBWebViewController ()<UIWebViewDelegate, QMUINavigationControllerDelegate, UIScrollViewDelegate, NJKWebViewProgressDelegate, QMUIImagePreviewViewDelegate, SonicSessionDelegate>
 
@@ -313,6 +315,39 @@
             }
         }];
     }];
+    
+    //日记本
+    [self.bridge registerHandler:@"diarybook" handler:^(id data, WVJBResponseCallback responseCallback) {
+        
+        [DCURLRouter pushURLString:@"meb://diarybook" query:data animated:YES];
+        if (responseCallback) {
+            responseCallback(@{});
+        }
+    }];
+    
+    //TD自定义事件埋点统计
+    [self.bridge registerHandler:@"trackEvent" handler:^(id data, WVJBResponseCallback responseCallback) {
+        [TalkingData trackEvent:data[@"action"] label:nil parameters:@{@"message" : data[@"message"] == nil ? @"无" : data[@"message"]}];
+        if (responseCallback) {
+            responseCallback(@{});
+        }
+    }];
+    
+    //TD页面访问停留时间统计（访问开始调用）
+    [self.bridge registerHandler:@"trackBegin" handler:^(id data, WVJBResponseCallback responseCallback) {
+        [TalkingData trackPageBegin:data[@"page"]];
+        if (responseCallback) {
+            responseCallback(@{});
+        }
+    }];
+    
+    //TD页面访问停留时间统计（访问结束调用）
+    [self.bridge registerHandler:@"trackPageEnd" handler:^(id data, WVJBResponseCallback responseCallback) {
+        [TalkingData trackPageEnd:data[@"page"]];
+        if (responseCallback) {
+            responseCallback(@{});
+        }
+    }];
 }
 
 #pragma mark - action
@@ -353,6 +388,9 @@
     }
     else
     {
+        //特殊处理，H5端页面关闭时，无法唤起原生方法，故在此处处理H5页面离开时TD埋点
+        [self trackPageEndWithUrlPath:self.webView.request.URL.path];
+        
         if([self qmui_isPresented])
         {
             [self dismissViewControllerAnimated:YES completion:nil];
@@ -588,7 +626,8 @@
             self.popupAtBarButtonItem.automaticallyHidesWhenUserTap = YES;// 点击空白地方消失浮层
             self.popupAtBarButtonItem.maximumWidth = 180;
             self.popupAtBarButtonItem.shouldShowItemSeparator = YES;
-            self.popupAtBarButtonItem.separatorInset = UIEdgeInsetsMake(0, self.popupAtBarButtonItem.padding.left, 0, self.popupAtBarButtonItem.padding.right);
+            self.popupAtBarButtonItem.itemSeparatorInset = UIEdgeInsetsMake(0, self.popupAtBarButtonItem.padding.left, 0, self.popupAtBarButtonItem.padding.right);
+//            self.popupAtBarButtonItem.separatorInset = UIEdgeInsetsMake(0, self.popupAtBarButtonItem.padding.left, 0, self.popupAtBarButtonItem.padding.right);
         }
         
         NSMutableArray *popuItems = [NSMutableArray arrayWithCapacity:itemModel.subMenus.count];
@@ -688,7 +727,7 @@
     }
     
     self.imagePreviewViewController.imagePreviewView.currentImageIndex = current;// 默认查看的图片的 index
-    [self.imagePreviewViewController startPreviewByFadeIn];
+    [self presentViewController:self.imagePreviewViewController animated:YES completion:nil];
 }
 
 #pragma mark - <QMUIImagePreviewViewDelegate>
@@ -723,7 +762,8 @@
 //点击
 - (void)singleTouchInZoomingImageView:(QMUIZoomImageView *)zoomImageView location:(CGPoint)location
 {
-    [self.imagePreviewViewController exitPreviewByFadeOut];
+    [self.imagePreviewViewController dismissViewControllerAnimated:YES completion:nil];
+//    [self.imagePreviewViewController exitPreviewByFadeOut];
 }
 
 #pragma mark - config
@@ -1340,5 +1380,77 @@
     }
 }
 
+#pragma mark - TD数据分析 H5页面消失时统计（特殊处理：在H5中无法捕获到页面消息事件，故在原生Webview里面切换新请求时捕获）
+
+- (void)trackPageEndWithUrlPath:(NSString *)urlPath
+{
+    if ([urlPath isEqualToString:@"/project/detail"]) {     //商品详情
+        [TalkingData trackPageEnd:@"商品详情"];
+    }
+    if ([urlPath isEqualToString:@"/hospital/detail"]) {
+        [TalkingData trackPageEnd:@"医院详情"];
+    }
+    if ([urlPath isEqualToString:@"/hospital/archive"]) {
+        [TalkingData trackPageEnd:@"医院档案"];
+    }
+    if ([urlPath isEqualToString:@"/cases/detail"]) {
+        [TalkingData trackPageEnd:@"案例详情"];
+    }
+    if ([urlPath isEqualToString:@"/doctor/detail"]) {
+        [TalkingData trackPageEnd:@"医生详情"];
+    }
+    if ([urlPath isEqualToString:@"/doctor/archive"]) {
+        [TalkingData trackPageEnd:@"医生档案"];
+    }
+    if ([urlPath isEqualToString:@"/knowledge/detail"]) {
+        [TalkingData trackPageEnd:@"知识详情"];
+    }
+    if ([urlPath isEqualToString:@"/wiki/detail"]) {
+        [TalkingData trackPageEnd:@"百科详情"];
+    }
+    if ([urlPath isEqualToString:@"/question/detail"]) {
+        [TalkingData trackPageEnd:@"问答详情"];
+    }
+    if ([urlPath isEqualToString:@"/service/securityCard"]) {
+        [TalkingData trackPageEnd:@"术后保障卡"];
+    }
+    if ([urlPath isEqualToString:@"/tips/introduce"]) {
+        [TalkingData trackPageEnd:@"面诊贴士"];
+    }
+    if ([urlPath isEqualToString:@"/tips/returnmanual"]) {
+        [TalkingData trackPageEnd:@"恢复手册"];
+    }
+    if ([urlPath isEqualToString:@"/tips/surgerybeforetip"]) {
+        [TalkingData trackPageEnd:@"术后提示"];
+    }
+    if ([urlPath isEqualToString:@"/wripr"] && ![urlPath isEqualToString:@"/wripr/detail"]) {
+        [TalkingData trackPageEnd:@"维权申请"];
+    }
+    if ([urlPath isEqualToString:@"/wripr/detail"]) {
+        [TalkingData trackPageEnd:@"维权详情"];
+    }
+    if ([urlPath isEqualToString:@"/wripr/detail"]) {
+        [TalkingData trackPageEnd:@"维权详情"];
+    }
+    if ([urlPath isEqualToString:@"/activity/detail"]) {
+        [TalkingData trackPageEnd:@"活动详情"];
+    }
+    if ([urlPath isEqualToString:@"/share/detail"]) {
+        [TalkingData trackPageEnd:@"分享页面"];
+    }
+}
+
+- (void)trackPageEndWithUrl:(NSURL *)url oldUrl:(NSURL *)oldUrl
+{
+    if (url == nil || oldUrl == nil) {
+        return;
+    }
+    NSString *newPath = [NSString stringWithFormat:@"%@?%@",url.path,url.query];
+    NSString *oldPath = [NSString stringWithFormat:@"%@?%@",oldUrl.path,oldUrl.query];
+    
+    if (![newPath isEqualToString:oldPath]) {
+        [self trackPageEndWithUrlPath:oldUrl.path];
+    }
+}
 @end
 
